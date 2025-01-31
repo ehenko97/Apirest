@@ -1,0 +1,241 @@
+openapi: 3.1.0
+info:
+  title: Product and User API
+  version: 1.0.0
+  description: API для управления продуктами и пользователями.
+paths:
+  /products:
+    get:
+      summary: Получить все продукты
+      description: Возвращает список всех продуктов.
+      responses:
+        '200':
+          description: Успешный запрос. Возвращает список продуктов.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+    post:
+      summary: Создать новый продукт
+      description: Создает новый продукт.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Product'
+      responses:
+        '201':
+          description: Продукт успешно создан.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+  /products/{id}:
+    get:
+      summary: Получить продукт по ID
+      description: Возвращает продукт по его идентификатору.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Успешный запрос. Возвращает продукт.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          description: Продукт не найден.
+    put:
+      summary: Обновить продукт по ID
+      description: Обновляет данные продукта по его идентификатору.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Product'
+      responses:
+        '200':
+          description: Продукт успешно обновлен.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          description: Продукт не найден.
+    delete:
+      summary: Удалить продукт по ID
+      description: Удаляет продукт по его идентификатору.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Продукт успешно удален.
+        '404':
+          description: Продукт не найден.
+  /users/{id}/products:
+    get:
+      summary: Получить продукты пользователя по ID
+      description: Возвращает список продуктов, связанных с пользователем.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Успешный запрос. Возвращает список продуктов.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+        '404':
+          description: Пользователь не найден.
+  /users:
+    get:
+      summary: Получить всех пользователей
+      description: Возвращает список всех пользователей.
+      responses:
+        '200':
+          description: Успешный запрос. Возвращает список пользователей.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+    post:
+      summary: Создать нового пользователя
+      description: Создает нового пользователя.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '201':
+          description: Пользователь успешно создан.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+  /users/{id}:
+    get:
+      summary: Получить пользователя по ID
+      description: Возвращает пользователя по его идентификатору.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Успешный запрос. Возвращает пользователя.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: Пользователь не найден.
+    put:
+      summary: Обновить пользователя по ID
+      description: Обновляет данные пользователя по его идентификатору.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          description: Пользователь успешно обновлен.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: Пользователь не найден.
+    delete:
+      summary: Удалить пользователя по ID
+      description: Удаляет пользователя по его идентификатору.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Пользователь успешно удален.
+        '404':
+          description: Пользователь не найден.
+components:
+  schemas:
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Уникальный идентификатор продукта.
+        name:
+          type: string
+          description: Название продукта.
+        description:
+          type: string
+          description: Описание продукта.
+        price:
+          type: number
+          format: float
+          description: Цена продукта.
+        userId:
+          type: integer
+          description: Идентификатор пользователя, связанного с продуктом.
+      required:
+        - id
+        - name
+        - price
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Уникальный идентификатор пользователя.
+        name:
+          type: string
+          description: Имя пользователя.
+        email:
+          type: string
+          format: email
+          description: Email пользователя.
+      required:
+        - id
+        - name
+        - email

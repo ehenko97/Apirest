@@ -1,20 +1,24 @@
 package routes
 
 import (
-	http2 "Projectapirest/internal/controller/http"
-	"net/http"
+	http2 "github.com/ehenko97/apirest/internal/controller/http"
+	"github.com/gorilla/mux"
 )
 
-// SetupUserRoutes настраивает маршруты для работы с пользователями
-func SetupUserRoutes(userController *http2.UserController) *http.ServeMux {
-	mux := http.NewServeMux()
+// SetupUserRoutes регистрирует маршруты для работы с пользователями
+func SetupUserRoutes(r *mux.Router, userController *http2.UserController) {
+	// GET получение всех пользователей
+	r.HandleFunc("/users", userController.GetAllUsers).Methods("GET")
 
-	// Маршруты для работы с пользователями
-	mux.HandleFunc("/api/v1/users", userController.GetAllUsers) // GET для всех пользователей
-	mux.HandleFunc("/api/v1/users", userController.CreateUser)  // POST для создания пользователя
-	mux.HandleFunc("/api/v1/users/", userController.GetUser)    // GET для пользователя по ID
-	mux.HandleFunc("/api/v1/users/", userController.UpdateUser) // PUT для обновления пользователя
-	mux.HandleFunc("/api/v1/users/", userController.DeleteUser) // DELETE для удаления пользователя
+	// POST создание нового пользователя
+	r.HandleFunc("/users", userController.CreateUser).Methods("POST")
 
-	return mux
+	// GET  получение пользователя по ID
+	r.HandleFunc("/users/{id}", userController.GetUser).Methods("GET")
+
+	// PUT обновление данных пользователя по ID
+	r.HandleFunc("/users/{id}", userController.UpdateUser).Methods("PUT")
+
+	// DELETE  удаление пользователя по ID
+	r.HandleFunc("/users/{id}", userController.DeleteUser).Methods("DELETE")
 }

@@ -1,20 +1,11 @@
 package repository
 
 import (
-	"Projectapirest/internal/entity"
 	"context"
 	"database/sql"
+	"github.com/ehenko97/apirest/internal/entity"
 	"time"
 )
-
-// UserRepositoryInterface описывает методы работы с пользователями.
-type UserRepositoryInterface interface {
-	Create(ctx context.Context, user entity.User) (entity.User, error)
-	FindByID(ctx context.Context, id int) (entity.User, error)
-	Update(ctx context.Context, user entity.User) error
-	Delete(ctx context.Context, id int) error
-	FindAll(ctx context.Context) ([]entity.User, error)
-}
 
 // UserRepository содержит ссылку на базу данных и реализует интерфейс UserRepositoryInterface.
 type UserRepository struct {
@@ -22,23 +13,21 @@ type UserRepository struct {
 }
 
 // NewUserRepository создает новый репозиторий пользователей.
-func NewUserRepository(db *sql.DB) UserRepositoryInterface {
-	return &UserRepository{db: db} // Возвращаем интерфейс
+func NewUserRepository(db *sql.DB) *UserRepository {
+	return &UserRepository{db: db}
 }
 
 // Create добавляет нового пользователя в базу данных.
 func (r *UserRepository) Create(ctx context.Context, user entity.User) (entity.User, error) {
 	query := `
-        INSERT INTO users (name, email, password, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5) RETURNING id`
+        INSERT INTO users (name, email)
+        VALUES ($1, $2) RETURNING id, created_at, updated_at`
 	err := r.db.QueryRowContext(
 		ctx,
 		query,
 		user.Name,
 		user.Email,
-		time.Now(),
-		time.Now(),
-	).Scan(&user.ID)
+	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return user, err
 	}
@@ -47,7 +36,7 @@ func (r *UserRepository) Create(ctx context.Context, user entity.User) (entity.U
 
 // FindByID находит пользователя по ID.
 func (r *UserRepository) FindByID(ctx context.Context, id int) (entity.User, error) {
-	query := `SELECT id, name, email, password, created_at, updated_at FROM users WHERE id = $1`
+	query := `SELECT id, name, email, created_at, updated_at FROM users WHERE id = $1`
 	var user entity.User
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&user.ID,
@@ -66,8 +55,8 @@ func (r *UserRepository) FindByID(ctx context.Context, id int) (entity.User, err
 func (r *UserRepository) Update(ctx context.Context, user entity.User) error {
 	query := `
         UPDATE users
-        SET name = $1, email = $2, password = $3, updated_at = $4
-        WHERE id = $5`
+        SET name = $1, email = $2, updated_at = $3
+        WHERE id = $4`
 	_, err := r.db.ExecContext(
 		ctx,
 		query,
@@ -88,7 +77,7 @@ func (r *UserRepository) Delete(ctx context.Context, id int) error {
 
 // FindAll возвращает список всех пользователей.
 func (r *UserRepository) FindAll(ctx context.Context) ([]entity.User, error) {
-	query := `SELECT id, name, email, password, created_at, updated_at FROM users`
+	query := `SELECT id, name, email, created_at, updated_at FROM users`
 	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err

@@ -1,0 +1,146 @@
+syntax = "proto3";
+
+package api;
+
+
+
+option go_package = "apirest/internal/proto;api";  // Указываем пакет для Go
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";  // Добавляем импорт для Timestamp
+
+// ------------------- User -------------------
+
+// Сообщение для представления пользователя
+message User {
+  int64 id = 1;                  // Идентификатор пользователя
+  string name = 2;               // Имя пользователя
+  string email = 3;              // Email пользователя
+  google.protobuf.Timestamp created_at = 4;  // Дата и время создания
+  google.protobuf.Timestamp updated_at = 5;  // Дата и время обновления
+}
+
+// Запрос на создание пользователя
+message CreateUserRequest {
+  string name = 1;
+  string email = 2;
+}
+
+// Ответ с пользователем
+message UserResponse {
+  User user = 1;
+}
+
+// Запрос на получение пользователя по ID
+message GetUserRequest {
+  int64 id = 1;
+}
+
+// Запрос на обновление пользователя
+message UpdateUserRequest {
+  int64 id = 1;
+  string name = 2;
+  string email = 3;
+}
+
+// Запрос на удаление пользователя
+message DeleteUserRequest {
+  int64 id = 1;
+}
+
+// Ответ на удаление пользователя
+message DeleteUserResponse {}
+
+// Запрос на получение списка пользователей
+message ListUsersRequest {}
+
+message ListUsersResponse {
+  repeated User users = 1;
+}
+
+// ------------------- Product -------------------
+
+// Сообщение для представления продукта
+message Product {
+  int64 id = 1;                   // Идентификатор продукта
+  string name = 2;                 // Название продукта
+  string description = 3;          // Описание продукта
+  float price = 4;                 // Цена продукта
+  int64 user_id = 5;               // ID владельца (Foreign Key)
+  google.protobuf.Timestamp created_at = 6;  // Дата и время создания
+  google.protobuf.Timestamp updated_at = 7;  // Дата и время обновления
+}
+
+// Запрос на создание продукта
+message CreateProductRequest {
+  string name = 1;
+  string description = 2;
+  float price = 3;
+  int64 user_id = 4;
+}
+
+// Ответ с продуктом
+message ProductResponse {
+  Product product = 1;
+}
+
+// Запрос на получение продукта по ID
+message GetProductRequest {
+  int64 id = 1;
+}
+
+// Запрос на обновление продукта
+message UpdateProductRequest {
+  int64 id = 1;
+  string name = 2;
+  string description = 3;
+  float price = 4;
+  int64 user_id = 5;
+}
+
+// Запрос на удаление продукта
+message DeleteProductRequest {
+  int64 id = 1;
+}
+
+// Ответ на удаление продукта
+message DeleteProductResponse {}
+
+// Запрос на получение списка продуктов
+message ListProductsRequest {}
+
+message ListProductsResponse {
+  repeated Product products = 1;
+}
+
+// Запрос на получение продуктов по ID пользователя
+message ListUserProductsRequest {
+  int64 user_id = 1;
+}
+
+message ListUserProductsResponse {
+  repeated Product products = 1;
+}
+
+// ------------------- ProductService -------------------
+
+// Сервис для работы с продуктами
+service ProductService {
+  rpc Create (CreateProductRequest) returns (ProductResponse);             // Создание нового продукта
+  rpc FindByID (GetProductRequest) returns (ProductResponse);              // Получение продукта по ID
+  rpc Update (UpdateProductRequest) returns (ProductResponse);             // Обновление информации о продукте
+  rpc Delete (DeleteProductRequest) returns (DeleteProductResponse);      // Удаление продукта по ID
+  rpc FindAll (ListProductsRequest) returns (ListProductsResponse);       // Получение списка всех продуктов
+  rpc FindByUserID (ListUserProductsRequest) returns (ListUserProductsResponse);  // Получение всех продуктов по ID пользователя
+}
+
+// ------------------- UserService -------------------
+
+// Сервис для работы с пользователями
+service UserService {
+  rpc Create (CreateUserRequest) returns (UserResponse);             // Создание нового пользователя
+  rpc FindByID (GetUserRequest) returns (UserResponse);              // Получение информации о пользователе по его уникальному ID
+  rpc Update (UpdateUserRequest) returns (UserResponse);             // Обновление информации о пользователе
+  rpc Delete (DeleteUserRequest) returns (DeleteUserResponse);       // Удаление пользователя по ID
+  rpc FindAll (ListUsersRequest) returns (ListUsersResponse);       // Получение списка всех пользователей
+}

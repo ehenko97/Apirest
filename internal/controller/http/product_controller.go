@@ -1,28 +1,36 @@
 package http
 
 import (
-	"Projectapirest/internal/entity"
-	service "Projectapirest/internal/services"
 	"encoding/json"
 	"errors"
+	"github.com/ehenko97/apirest/internal/entity"
+	"github.com/ehenko97/apirest/internal/service"
 	"net/http"
 	"strconv"
 	"strings"
 )
 
-// ProductController структура контроллера для обработки запросов
+// ProductController структура контроллера для обработки запросов продуктов.
 type ProductController struct {
 	productService service.ProductService
+	userService    service.UserService
 }
 
-// NewProductController создает новый контроллер продуктов
-func NewProductController(productService service.ProductService) *ProductController {
+// NewProductController создает новый контроллер продуктов.
+func NewProductController(productService service.ProductService, userService service.UserService) *ProductController {
 	return &ProductController{
 		productService: productService,
+		userService:    userService, // Передаем userService
 	}
 }
 
-// CreateProduct создает новый продукт
+// Структура для объединения данных о пользователе и продуктах
+type UserProductsResponse struct {
+	User     entity.User      `json:"user"`
+	Products []entity.Product `json:"products"`
+}
+
+// CreateProduct создает новый продукт.
 func (pc *ProductController) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	var product entity.Product
 	if err := json.NewDecoder(r.Body).Decode(&product); err != nil {
@@ -36,11 +44,14 @@ func (pc *ProductController) CreateProduct(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(createdProduct)
+	if err := json.NewEncoder(w).Encode(createdProduct); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
 }
 
-// GetAllProducts возвращает все продукты
+// GetAllProducts возвращает список всех продуктов.
 func (pc *ProductController) GetAllProducts(w http.ResponseWriter, r *http.Request) {
 	products, err := pc.productService.FindAll(r.Context())
 	if err != nil {
@@ -48,10 +59,13 @@ func (pc *ProductController) GetAllProducts(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	json.NewEncoder(w).Encode(products)
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(products); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
 }
 
-// GetProduct возвращает продукт по ID
+// GetProduct возвращает продукт по ID.
 func (pc *ProductController) GetProduct(w http.ResponseWriter, r *http.Request) {
 	id, err := extractProductIDFromURL(r.URL.Path)
 	if err != nil {
@@ -65,10 +79,13 @@ func (pc *ProductController) GetProduct(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	json.NewEncoder(w).Encode(product)
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(product); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
 }
 
-// UpdateProduct обновляет продукт по ID
+// UpdateProduct обновляет продукт по ID.
 func (pc *ProductController) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	id, err := extractProductIDFromURL(r.URL.Path)
 	if err != nil {
@@ -89,10 +106,13 @@ func (pc *ProductController) UpdateProduct(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	json.NewEncoder(w).Encode(product)
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(product); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
 }
 
-// DeleteProduct удаляет продукт по ID
+// DeleteProduct удаляет продукт по ID.
 func (pc *ProductController) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	id, err := extractProductIDFromURL(r.URL.Path)
 	if err != nil {
@@ -109,11 +129,61 @@ func (pc *ProductController) DeleteProduct(w http.ResponseWriter, r *http.Reques
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// extractIDFromURL извлекает ID из URL
-func extractProductIDFromURL(path string) (int, error) {
-	parts := strings.Split(strings.TrimSuffix(path, "/"), "/")
-	if len(parts) < 5 { // Проверка, что путь содержит хотя бы 5 частей
-		return 0, errors.New("ID is missing in the URL")
+func (pc *ProductController) GetUserProducts(w http.ResponseWriter, r *http.Request) {
+	// Проверка, что метод GET
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
 	}
-	return strconv.Atoi(parts[4]) // ID теперь в 5-й части пути
+
+	// Извлечение userID из URL
+	userID, err := extractUserIDFromURL(r.URL.Path)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Получаем информацию о пользователе через userService
+	user, err := pc.userService.FindByID(r.Context(), userID)
+	if err != nil {
+		http.Error(w, "Failed to fetch user: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Получаем все продукты для указанного пользователя
+	products, err := pc.productService.FindByUserID(r.Context(), userID)
+	if err != nil {
+		http.Error(w, "Failed to fetch products: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Формируем ответ с информацией о пользователе и продуктах
+	response := UserProductsResponse{
+		User:     user,
+		Products: products,
+	}
+
+	// Возвращаем ответ
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
+}
+
+// extractProductIDFromURL извлекает ID продукта из URL
+func extractProductIDFromURL(path string) (int, error) {
+	// Убираем только префикс "/products/"
+	parts := strings.Split(strings.TrimPrefix(path, "/products/"), "/")
+	if len(parts) < 1 || parts[0] == "" {
+		return 0, errors.New("missing product ID")
+	}
+
+	// Преобразуем ID в число
+	id, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return 0, errors.New("invalid product ID format")
+	}
+
+	return id, nil
 }
