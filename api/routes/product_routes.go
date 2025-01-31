@@ -1,20 +1,27 @@
 package routes
 
 import (
-	http2 "Projectapirest/internal/controller/http"
-	"net/http"
+	http2 "github.com/ehenko97/apirest/internal/controller/http"
+	"github.com/gorilla/mux"
 )
 
-// SetupProductRoutes настраивает маршруты для работы с продуктами
-func SetupProductRoutes(productController *http2.ProductController) *http.ServeMux {
-	mux := http.NewServeMux()
+// SetupProductRoutes регистрирует маршруты для работы с продуктами
+func SetupProductRoutes(r *mux.Router, productController *http2.ProductController) {
+	// GET получение всех продуктов
+	r.HandleFunc("/products", productController.GetAllProducts).Methods("GET")
 
-	// Маршруты для работы с продуктами
-	mux.HandleFunc("/api/v1/products", productController.GetAllProducts) // GET для всех продуктов
-	mux.HandleFunc("/api/v1/products", productController.CreateProduct)  // POST для создания продукта
-	mux.HandleFunc("/api/v1/products/", productController.GetProduct)    // GET для продукта по ID
-	mux.HandleFunc("/api/v1/products/", productController.UpdateProduct) // PUT для обновления продукта
-	mux.HandleFunc("/api/v1/products/", productController.DeleteProduct) // DELETE для удаления продукта
+	// POST создание нового продукта
+	r.HandleFunc("/products", productController.CreateProduct).Methods("POST")
 
-	return mux
+	// GET получение всех продуктов по ID
+	r.HandleFunc("/products/{id}", productController.GetProduct).Methods("GET")
+
+	// PUT обновление данных продукта по ID
+	r.HandleFunc("/products/{id}", productController.UpdateProduct).Methods("PUT")
+
+	// DELETE  удаление продукта по ID
+	r.HandleFunc("/products/{id}", productController.DeleteProduct).Methods("DELETE")
+
+	// GET получение пользователя по ID и продукта
+	r.HandleFunc("/users/{id}/products", productController.GetUserProducts).Methods("GET")
 }

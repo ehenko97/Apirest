@@ -1,15 +1,16 @@
 package http
 
 import (
-	"Projectapirest/internal/entity"
-	service "Projectapirest/internal/services"
+	"encoding/json"
 	"errors"
+	"github.com/ehenko97/apirest/internal/entity"
+	"github.com/ehenko97/apirest/internal/service"
 	"net/http"
 	"strconv"
 	"strings"
 )
 
-// UserController структура контроллера для обработки запросов.
+// UserController структура контроллера для обработки запросов пользователей.
 type UserController struct {
 	userService service.UserService
 }
@@ -24,9 +25,15 @@ func NewUserController(userService service.UserService) *UserController {
 // CreateUser создает нового пользователя.
 func (uc *UserController) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var user entity.User
-	// Десериализация запроса через функцию из сервиса
-	if err := service.DecodeUserRequestBody(r, &user); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+	// Десериализация запроса
+	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		http.Error(w, "Invalid request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Валидация данных пользователя
+	if user.Name == "" || user.Email == "" {
+		http.Error(w, "User name and email are required", http.StatusBadRequest)
 		return
 	}
 
@@ -36,8 +43,12 @@ func (uc *UserController) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Сериализация ответа через функцию из сервиса
-	service.EncodeUserResponse(w, createdUser, http.StatusCreated)
+	// Сериализация ответа
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(createdUser); err != nil {
+		http.Error(w, "Failed to encode response: "+err.Error(), http.StatusInternalServerError)
+	}
 }
 
 // GetAllUsers возвращает всех пользователей.
@@ -48,8 +59,11 @@ func (uc *UserController) GetAllUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Сериализация ответа через функцию из сервиса
-	service.EncodeUserResponse(w, users, http.StatusOK)
+	// Сериализация ответа
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(users); err != nil {
+		http.Error(w, "Failed to encode response: "+err.Error(), http.StatusInternalServerError)
+	}
 }
 
 // GetUser возвращает пользователя по ID.
@@ -66,8 +80,11 @@ func (uc *UserController) GetUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Сериализация ответа через функцию из сервиса
-	service.EncodeUserResponse(w, user, http.StatusOK)
+	// Сериализация ответа
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(user); err != nil {
+		http.Error(w, "Failed to encode response: "+err.Error(), http.StatusInternalServerError)
+	}
 }
 
 // UpdateUser обновляет пользователя по ID.
@@ -79,12 +96,18 @@ func (uc *UserController) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var updatedUser entity.User
-	// Десериализация запроса через функцию из сервиса
-	if err := service.DecodeUserRequestBody(r, &updatedUser); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+	// Десериализация запроса
+	if err := json.NewDecoder(r.Body).Decode(&updatedUser); err != nil {
+		http.Error(w, "Invalid request body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	updatedUser.ID = id
+
+	// Валидация данных пользователя
+	if updatedUser.Name == "" || updatedUser.Email == "" {
+		http.Error(w, "User name and email are required", http.StatusBadRequest)
+		return
+	}
 
 	user, err := uc.userService.Update(r.Context(), updatedUser)
 	if err != nil {
@@ -92,8 +115,11 @@ func (uc *UserController) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Сериализация ответа через функцию из сервиса
-	service.EncodeUserResponse(w, user, http.StatusOK)
+	// Сериализация ответа
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(user); err != nil {
+		http.Error(w, "Failed to encode response: "+err.Error(), http.StatusInternalServerError)
+	}
 }
 
 // DeleteUser удаляет пользователя по ID.
@@ -113,11 +139,19 @@ func (uc *UserController) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// extractUserIDFromURL извлекает ID пользователя из URL.
+// extractUserIDFromURL извлекает ID пользователя из URL
 func extractUserIDFromURL(path string) (int, error) {
-	parts := strings.Split(strings.TrimSuffix(path, "/"), "/")
-	if len(parts) < 5 { // Проверка, что путь содержит хотя бы 5 частей
-		return 0, errors.New("ID is missing in the URL")
+	// Убираем только префикс "/users/"
+	parts := strings.Split(strings.TrimPrefix(path, "/users/"), "/")
+	if len(parts) < 1 || parts[0] == "" {
+		return 0, errors.New("missing user ID")
 	}
-	return strconv.Atoi(parts[4]) // ID теперь в 5-й части пути
+
+	// Преобразуем ID в число
+	id, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return 0, errors.New("invalid user ID format")
+	}
+
+	return id, nil
 }

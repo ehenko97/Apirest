@@ -1,52 +1,71 @@
 package cache
 
 import (
-	"fmt"
+	"context"
 	"sync"
 	"time"
 )
 
 type InMemoryCache struct {
-	mu    sync.RWMutex
-	store map[string]cacheItem
+	data map[string]cacheItem
+	mu   sync.RWMutex
 }
 
 type cacheItem struct {
-	value      string
-	expiration time.Time
+	value interface{}
+	ttl   time.Time
 }
 
 func NewInMemoryCache() *InMemoryCache {
 	return &InMemoryCache{
-		store: make(map[string]cacheItem),
+		data: make(map[string]cacheItem),
 	}
 }
 
-func (c *InMemoryCache) Get(key string) (string, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	item, found := c.store[key]
-	if !found || time.Now().After(item.expiration) {
-		return "", fmt.Errorf("key not found or expired")
-	}
-	return item.value, nil
-}
-
-func (c *InMemoryCache) Set(key, value string, ttl int) error {
+// Set добавляет элемент в кэш с возможным временем истечения.
+func (c *InMemoryCache) Set(_ context.Context, key string, value interface{}, ttl time.Duration) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.store[key] = cacheItem{
-		value:      value,
-		expiration: time.Now().Add(time.Duration(ttl) * time.Second),
+	// Если ttl больше 0, устанавливаем время жизни для элемента
+	var expiryTime time.Time
+	if ttl > 0 {
+		expiryTime = time.Now().Add(ttl)
+	}
+
+	c.data[key] = cacheItem{
+		value: value,
+		ttl:   expiryTime,
 	}
 	return nil
 }
 
-func (c *InMemoryCache) Delete(key string) error {
+// Get возвращает элемент из кэша, если он существует и не истек.
+func (c *InMemoryCache) Get(_ context.Context, key string, dest interface{}) error {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	item, exists := c.data[key]
+	if !exists {
+		return nil // Возвращаем nil, если нет такого ключа
+	}
+
+	// Проверяем TTL
+	if !item.ttl.IsZero() && time.Now().After(item.ttl) {
+		delete(c.data, key) // Удаляем элемент, если он истек
+		return nil
+	}
+
+	// Преобразуем значение в нужный тип
+	*dest.(*interface{}) = item.value
+	return nil
+}
+
+// Delete удаляет элемент из кэша.
+func (c *InMemoryCache) Delete(_ context.Context, key string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	delete(c.store, key)
+
+	delete(c.data, key)
 	return nil
 }
